@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Camera, X, Download } from 'lucide-react';
+import { Camera, X, Download, Move, Check } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as htmlToImage from 'html-to-image';
 
@@ -13,6 +13,7 @@ interface CameraOverlayProps {
 export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBeforeExport, onAfterExport, actionButtons }) => {
   const [bgImage, setBgImage] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isRepositioning, setIsRepositioning] = useState(false);
   
   // Dragging state
   const [bgPos, setBgPos] = useState({ x: 0, y: 0 });
@@ -41,8 +42,8 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!bgImage) return;
     const target = e.target as HTMLElement;
-    // Don't drag if clicking on buttons or scrollable areas
-    if (target.closest('button') || target.closest('.no-drag')) return;
+    // In repositioning mode, allow dragging everywhere. Otherwise respect buttons and no-drag areas.
+    if (!isRepositioning && (target.closest('button') || target.closest('.no-drag'))) return;
     
     isDragging.current = true;
     dragStart.current = { x: e.clientX, y: e.clientY };
@@ -138,7 +139,7 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
 
         {/* Drag Hint Toast */}
         <AnimatePresence>
-          {showDragHint && (
+          {(showDragHint || isRepositioning) && (
             <motion.div 
               initial={{ opacity: 0, y: 20, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -154,7 +155,7 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
         </AnimatePresence>
         
         {/* Children (The Progress Bars) */}
-        <div className="relative z-10 flex-1 flex flex-col w-full h-full p-6 sm:p-8">
+        <div className={`relative z-10 flex-1 flex flex-col w-full h-full p-6 sm:p-8 transition-all duration-500 ${isRepositioning ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
           {children}
         </div>
         
@@ -165,36 +166,61 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
       </div>
 
       {/* Pill Dock for Actions */}
-      <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-full shadow-lg z-50 transition-opacity duration-300 ${isExporting ? 'opacity-0' : 'opacity-100'}`}>
-        {bgImage && (
+      <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-full shadow-lg z-50 transition-all duration-300 ${isExporting ? 'opacity-0' : 'opacity-100'}`}>
+        {isRepositioning ? (
           <button 
-            onClick={() => setBgImage(null)}
-            className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-colors"
-            title="Remove Photo"
+            onClick={() => setIsRepositioning(false)}
+            className="px-6 py-3 text-emerald-600 dark:text-emerald-400 font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-full transition-colors flex items-center gap-2"
+            title="Done"
           >
-            <X size={18} strokeWidth={2.5} />
+            <Check size={18} strokeWidth={3} />
+            <span className="text-sm">Done</span>
           </button>
-        )}
-        <button 
-          onClick={() => fileInputRef.current?.click()}
-          className="p-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
-          title="Take Photo / Upload"
-        >
-          <Camera size={18} strokeWidth={2.5} />
-        </button>
-        <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/10 mx-1" />
-        <button 
-          onClick={handleExportClick}
-          className="p-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
-          title="Export Image"
-        >
-          <Download size={18} strokeWidth={2.5} />
-        </button>
-        
-        {actionButtons && (
+        ) : (
           <>
+            {bgImage && (
+              <>
+                <button 
+                  onClick={() => setIsRepositioning(true)}
+                  className="p-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
+                  title="Reposition Photo"
+                >
+                  <Move size={18} strokeWidth={2.5} />
+                </button>
+                <button 
+                  onClick={() => {
+                    setBgImage(null);
+                    setIsRepositioning(false);
+                  }}
+                  className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-colors"
+                  title="Remove Photo"
+                >
+                  <X size={18} strokeWidth={2.5} />
+                </button>
+              </>
+            )}
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="p-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
+              title="Take Photo / Upload"
+            >
+              <Camera size={18} strokeWidth={2.5} />
+            </button>
             <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/10 mx-1" />
-            {actionButtons}
+            <button 
+              onClick={handleExportClick}
+              className="p-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
+              title="Export Image"
+            >
+              <Download size={18} strokeWidth={2.5} />
+            </button>
+            
+            {actionButtons && (
+              <>
+                <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/10 mx-1" />
+                {actionButtons}
+              </>
+            )}
           </>
         )}
       </div>

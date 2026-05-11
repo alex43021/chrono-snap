@@ -48,9 +48,6 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!bgImage) return;
-    const target = e.target as HTMLElement;
-    // In repositioning mode, allow dragging everywhere. Otherwise respect buttons and no-drag areas.
-    if (!isRepositioning && (target.closest('button') || target.closest('.no-drag'))) return;
     
     e.currentTarget.setPointerCapture(e.pointerId);
     activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -154,13 +151,9 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
 
       <div 
         ref={captureRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        className={`relative w-full h-[100dvh] sm:h-auto sm:aspect-[9/16] sm:max-h-[900px] bg-slate-50 dark:bg-[#0f0f11] overflow-hidden sm:rounded-[2rem] shadow-sm flex flex-col transition-colors duration-500 ${bgImage ? 'cursor-grab active:cursor-grabbing select-none touch-none' : ''}`}
+        className="relative w-full h-[100dvh] sm:h-auto sm:aspect-[9/16] sm:max-h-[900px] bg-slate-50 dark:bg-[#0f0f11] overflow-hidden sm:rounded-[2rem] shadow-sm flex flex-col transition-colors duration-500"
       >
-        {/* Background Image Layer (Pannable) */}
+        {/* Background Image Layer */}
         {bgImage && (
           <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
             <img 
@@ -173,9 +166,19 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
                 willChange: 'transform'
               }} 
             />
-            {/* Darker overlay */}
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
           </div>
+        )}
+
+        {/* Touch Interceptor Layer for Background Dragging & Pinching (Only active in Reposition Mode) */}
+        {bgImage && isRepositioning && (
+          <div 
+            className="absolute inset-0 z-20 touch-none cursor-grab active:cursor-grabbing"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+          />
         )}
 
         {/* Drag Hint Toast */}
@@ -213,6 +216,8 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
                 min="0.5" max="3" step="0.05" 
                 value={bgScale} 
                 onChange={(e) => setBgScale(parseFloat(e.target.value))}
+                onPointerDown={(e) => e.stopPropagation()} // Prevent triggering drag when touching slider
+                onTouchStart={(e) => e.stopPropagation()} // Ensure native mobile touch works
                 className="flex-1 accent-white h-1.5 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer touch-pan-x"
               />
             </motion.div>
@@ -220,7 +225,7 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
         </AnimatePresence>
         
         {/* Children (The Progress Bars) */}
-        <div className={`relative z-10 flex-1 flex flex-col w-full h-full p-6 sm:p-8 transition-all duration-500 ${isRepositioning ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
+        <div className={`relative z-10 flex-1 flex flex-col w-full h-full p-6 sm:p-8 transition-opacity duration-500 ${isRepositioning ? 'opacity-20' : 'opacity-100'}`}>
           {children}
         </div>
         

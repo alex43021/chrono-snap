@@ -116,7 +116,7 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        className={`relative w-full h-[100dvh] sm:h-auto sm:aspect-[9/16] sm:max-h-[900px] bg-slate-50 dark:bg-[#0f0f11] overflow-hidden sm:rounded-[2rem] shadow-sm flex flex-col transition-colors duration-500 ${bgImage ? 'cursor-grab active:cursor-grabbing select-none' : ''}`}
+        className={`relative w-full h-[100dvh] sm:h-auto sm:aspect-[9/16] sm:max-h-[900px] bg-slate-50 dark:bg-[#0f0f11] overflow-hidden sm:rounded-[2rem] shadow-sm flex flex-col transition-colors duration-500 ${bgImage ? 'cursor-grab active:cursor-grabbing select-none touch-none' : ''}`}
       >
         {/* Background Image Layer (Pannable) */}
         {bgImage && (

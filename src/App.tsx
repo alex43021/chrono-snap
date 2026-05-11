@@ -119,7 +119,7 @@ function App() {
         
         <Clock />
         
-        <div className="flex-1 flex flex-col justify-end pb-16 gap-6 w-full max-w-md mx-auto z-10 overflow-y-auto hide-scrollbar no-drag">
+        <div className="flex-1 flex flex-col justify-end pb-16 gap-6 w-full max-w-md mx-auto z-10 overflow-y-auto hide-scrollbar no-drag touch-pan-y">
           
           {/* Custom Projects Area */}
           <div className="flex flex-col gap-4">

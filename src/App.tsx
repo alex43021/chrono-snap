@@ -9,6 +9,7 @@ import { ProjectCard } from './components/ProjectCard';
 import { ProjectFormModal } from './components/ProjectFormModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Moon, Sun, Plus, ChevronUp, ChevronDown } from 'lucide-react';
+import { InstallPrompt } from './components/InstallPrompt';
 import dayjs from 'dayjs';
 
 function App() {
@@ -106,6 +107,7 @@ function App() {
       {addButton}
       <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/10 mx-1" />
       {themeButton}
+      <InstallPrompt />
     </>
   );
 

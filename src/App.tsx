@@ -171,7 +171,7 @@ function App() {
                   </h2>
                   <div className="flex-1 h-[1px] bg-slate-200 dark:bg-white/10" />
                   <button className="text-slate-500 dark:text-slate-400 p-0.5">
-                    {isLifeCyclesExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {isLifeCyclesExpanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
                   </button>
                 </div>
                 

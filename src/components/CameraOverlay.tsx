@@ -113,24 +113,26 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
     if (!captureRef.current) return;
     setIsExporting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const dataUrl = await htmlToImage.toPng(captureRef.current, {
-        quality: 1.0,
-        pixelRatio: 3,
-      });
-
-      // On mobile, use Web Share API if available
+      // On mobile, use Web Share API with JPEG (appears as a photo, not a file)
       if (isMobile && navigator.share) {
+        const dataUrl = await htmlToImage.toJpeg(captureRef.current, {
+          quality: 0.92,
+          pixelRatio: 3,
+          backgroundColor: '#0f0f11',
+        });
         const res = await fetch(dataUrl);
         const blob = await res.blob();
-        const file = new File([blob], `chrono-snap-${Date.now()}.png`, { type: 'image/png' });
+        const file = new File([blob], `ChronoSnap_${Date.now()}.jpg`, { type: 'image/jpeg' });
         await navigator.share({
           title: 'ChronoSnap',
           files: [file],
         });
       } else {
-        // Desktop: download directly
+        // Desktop: download as PNG for best quality
+        const dataUrl = await htmlToImage.toPng(captureRef.current, {
+          quality: 1.0,
+          pixelRatio: 3,
+        });
         const link = document.createElement('a');
         link.download = `chrono-snap-${Date.now()}.png`;
         link.href = dataUrl;

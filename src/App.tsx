@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CameraOverlay } from './components/CameraOverlay';
 import { Clock } from './components/Clock';
 import { ProgressBar } from './components/ProgressBar';
@@ -8,8 +8,9 @@ import { useProjects, type Project } from './hooks/useProjects';
 import { ProjectCard } from './components/ProjectCard';
 import { ProjectFormModal } from './components/ProjectFormModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Moon, Sun, Plus, ChevronUp, ChevronDown } from 'lucide-react';
+import { Moon, Sun, Plus, ChevronUp, ChevronDown, Bell, BellOff } from 'lucide-react';
 import { InstallPrompt } from './components/InstallPrompt';
+import { useProjectNotifications, requestNotificationPermission } from './hooks/useProjectNotifications';
 import dayjs from 'dayjs';
 
 function App() {
@@ -38,6 +39,25 @@ function App() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   
   const [isLifeCyclesExpanded, setIsLifeCyclesExpanded] = useState(true);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
+    'Notification' in window ? Notification.permission : 'denied'
+  );
+
+  // Activate notification monitoring
+  useProjectNotifications(projects);
+
+  // Request notification permission on first load if not decided yet
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotifPermission(Notification.permission);
+    }
+  }, []);
+
+  const handleToggleNotifications = async () => {
+    if (notifPermission === 'granted') return; // Already enabled
+    const granted = await requestNotificationPermission();
+    setNotifPermission(granted ? 'granted' : 'denied');
+  };
 
   const handleBeforeExport = (proceed: () => Promise<void>) => {
     setExportProceed(() => proceed);
@@ -107,6 +127,17 @@ function App() {
       {addButton}
       <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/10 mx-1" />
       {themeButton}
+      <button
+        onClick={handleToggleNotifications}
+        className={`p-3 rounded-full transition-colors ${
+          notifPermission === 'granted'
+            ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
+            : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10'
+        }`}
+        title={notifPermission === 'granted' ? 'Notifications enabled' : 'Enable notifications'}
+      >
+        {notifPermission === 'granted' ? <Bell size={18} strokeWidth={2.5} /> : <BellOff size={18} strokeWidth={2.5} />}
+      </button>
       <InstallPrompt />
     </>
   );

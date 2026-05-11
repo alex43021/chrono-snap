@@ -84,7 +84,7 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
       const points = Array.from(activePointers.current.values());
       const dist = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
       const newScale = initialPinchScale.current * (dist / initialPinchDistance.current);
-      setBgScale(Math.min(Math.max(0.5, newScale), 5)); // Clamp scale between 0.5 and 5
+      setBgScale(Math.min(Math.max(0.2, newScale), 5)); // Clamp scale between 0.2 and 5
     }
   };
 
@@ -213,7 +213,7 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
               </span>
               <input 
                 type="range" 
-                min="0.5" max="3" step="0.05" 
+                min="0.2" max="3" step="0.05" 
                 value={bgScale} 
                 onChange={(e) => setBgScale(parseFloat(e.target.value))}
                 onPointerDown={(e) => e.stopPropagation()} // Prevent triggering drag when touching slider

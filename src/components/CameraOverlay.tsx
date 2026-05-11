@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { Camera, X, Download } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as htmlToImage from 'html-to-image';

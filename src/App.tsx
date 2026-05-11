@@ -8,7 +8,7 @@ import { useProjects, type Project } from './hooks/useProjects';
 import { ProjectCard } from './components/ProjectCard';
 import { ProjectFormModal } from './components/ProjectFormModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Moon, Sun, Plus } from 'lucide-react';
+import { Moon, Sun, Plus, ChevronUp, ChevronDown } from 'lucide-react';
 import dayjs from 'dayjs';
 
 function App() {
@@ -35,6 +35,8 @@ function App() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  
+  const [isLifeCyclesExpanded, setIsLifeCyclesExpanded] = useState(true);
 
   const handleBeforeExport = (proceed: () => Promise<void>) => {
     setExportProceed(() => proceed);
@@ -160,16 +162,22 @@ function App() {
                 exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
                 className="bg-white/40 dark:bg-black/20 backdrop-blur-md border border-slate-200/30 dark:border-white/5 rounded-xl p-4 shadow-sm flex flex-col gap-1 transition-colors duration-500 mt-2"
               >
-                <div className="mb-2 flex items-center gap-2 opacity-60">
+                <div 
+                  className="mb-2 flex items-center gap-2 opacity-60 cursor-pointer hover:opacity-100 transition-opacity"
+                  onClick={() => setIsLifeCyclesExpanded(!isLifeCyclesExpanded)}
+                >
                   <h2 className="text-[9px] font-bold tracking-[0.2em] uppercase text-slate-500 dark:text-slate-400">
                     Life Cycles
                   </h2>
                   <div className="flex-1 h-[1px] bg-slate-200 dark:bg-white/10" />
+                  <button className="text-slate-500 dark:text-slate-400 p-0.5">
+                    {isLifeCyclesExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
                 </div>
                 
                 <AnimatePresence>
-                  {lifecycleItems.map((item, index) => visibleItems.includes(item.id) && (
-                    <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  {lifecycleItems.map((item, index) => visibleItems.includes(item.id) && isLifeCyclesExpanded && (
+                    <motion.div key={item.id} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0, overflow: 'hidden' }}>
                       <ProgressBar 
                         label={item.label} 
                         data={item.data} 

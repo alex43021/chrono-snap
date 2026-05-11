@@ -15,12 +15,18 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
   const [isExporting, setIsExporting] = useState(false);
   const [isRepositioning, setIsRepositioning] = useState(false);
   
-  // Dragging state
+  // Dragging & Zooming state
   const [bgPos, setBgPos] = useState({ x: 0, y: 0 });
+  const [bgScale, setBgScale] = useState(1);
   const [showDragHint, setShowDragHint] = useState(false);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const startBgPos = useRef({ x: 0, y: 0 });
+  
+  // Multi-touch tracking
+  const activePointers = useRef<Map<number, { x: number, y: number }>>(new Map());
+  const initialPinchDistance = useRef<number | null>(null);
+  const initialPinchScale = useRef<number>(1);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const captureRef = useRef<HTMLDivElement>(null);
@@ -32,6 +38,7 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
       reader.onloadend = () => {
         setBgImage(reader.result as string);
         setBgPos({ x: 0, y: 0 });
+        setBgScale(1);
         setShowDragHint(true);
         setTimeout(() => setShowDragHint(false), 4000);
       };
@@ -45,27 +52,61 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
     // In repositioning mode, allow dragging everywhere. Otherwise respect buttons and no-drag areas.
     if (!isRepositioning && (target.closest('button') || target.closest('.no-drag'))) return;
     
-    isDragging.current = true;
-    dragStart.current = { x: e.clientX, y: e.clientY };
-    startBgPos.current = { ...bgPos };
     e.currentTarget.setPointerCapture(e.pointerId);
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.current.size === 1) {
+      isDragging.current = true;
+      dragStart.current = { x: e.clientX, y: e.clientY };
+      startBgPos.current = { ...bgPos };
+    } else if (activePointers.current.size === 2) {
+      isDragging.current = false; // Stop panning while pinching
+      const points = Array.from(activePointers.current.values());
+      const dist = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+      initialPinchDistance.current = dist;
+      initialPinchScale.current = bgScale;
+    }
+    
     setShowDragHint(false);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging.current) return;
-    const deltaX = e.clientX - dragStart.current.x;
-    const deltaY = e.clientY - dragStart.current.y;
-    setBgPos({
-      x: startBgPos.current.x + deltaX,
-      y: startBgPos.current.y + deltaY,
-    });
+    if (!activePointers.current.has(e.pointerId)) return;
+    
+    // Update pointer position
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.current.size === 1 && isDragging.current) {
+      const deltaX = e.clientX - dragStart.current.x;
+      const deltaY = e.clientY - dragStart.current.y;
+      setBgPos({
+        x: startBgPos.current.x + deltaX,
+        y: startBgPos.current.y + deltaY,
+      });
+    } else if (activePointers.current.size === 2 && initialPinchDistance.current !== null) {
+      const points = Array.from(activePointers.current.values());
+      const dist = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+      const newScale = initialPinchScale.current * (dist / initialPinchDistance.current);
+      setBgScale(Math.min(Math.max(0.5, newScale), 5)); // Clamp scale between 0.5 and 5
+    }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isDragging.current) {
+    activePointers.current.delete(e.pointerId);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+
+    if (activePointers.current.size < 2) {
+      initialPinchDistance.current = null;
+    }
+    
+    if (activePointers.current.size === 1) {
+      // Resume panning with the remaining finger
+      isDragging.current = true;
+      const remainingPointer = Array.from(activePointers.current.values())[0];
+      dragStart.current = { x: remainingPointer.x, y: remainingPointer.y };
+      startBgPos.current = { ...bgPos };
+    } else if (activePointers.current.size === 0) {
       isDragging.current = false;
-      e.currentTarget.releasePointerCapture(e.pointerId);
     }
   };
 
@@ -128,7 +169,7 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
               className="absolute min-w-full min-h-full object-cover max-w-none" 
               style={{ 
                 top: '50%', left: '50%',
-                transform: `translate(calc(-50% + ${bgPos.x}px), calc(-50% + ${bgPos.y}px))`,
+                transform: `translate(calc(-50% + ${bgPos.x}px), calc(-50% + ${bgPos.y}px)) scale(${bgScale})`,
                 willChange: 'transform'
               }} 
             />
@@ -148,8 +189,32 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
             >
               <div className="bg-black/60 backdrop-blur-md text-white px-5 py-3 rounded-full flex items-center gap-2 shadow-2xl border border-white/20">
                 <span className="text-xl">🖐️</span>
-                <span className="text-sm font-semibold tracking-wide">Drag to reposition</span>
+                <span className="text-sm font-semibold tracking-wide">Drag to move, Pinch to zoom</span>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Slider for Zoom (Only in Reposition Mode) */}
+        <AnimatePresence>
+          {isRepositioning && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-28 left-1/2 -translate-x-1/2 w-64 z-50 bg-black/60 backdrop-blur-md rounded-full px-5 py-3 flex items-center gap-3 shadow-2xl border border-white/20"
+              onPointerDown={(e) => e.stopPropagation()} // Prevent triggering drag when touching slider
+            >
+              <span className="text-white/80 text-xs font-mono font-semibold w-9 text-right">
+                {Math.round(bgScale * 100)}%
+              </span>
+              <input 
+                type="range" 
+                min="0.5" max="3" step="0.05" 
+                value={bgScale} 
+                onChange={(e) => setBgScale(parseFloat(e.target.value))}
+                className="flex-1 accent-white h-1.5 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer touch-pan-x"
+              />
             </motion.div>
           )}
         </AnimatePresence>

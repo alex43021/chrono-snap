@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Camera, X, Download, Move, Check } from 'lucide-react';
+import { Camera, X, Download, Share2, Move, Check } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as htmlToImage from 'html-to-image';
 
@@ -107,6 +107,8 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
     }
   };
 
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
   const executeExport = async () => {
     if (!captureRef.current) return;
     setIsExporting(true);
@@ -117,13 +119,29 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
         quality: 1.0,
         pixelRatio: 3,
       });
-      const link = document.createElement('a');
-      link.download = `chrono-snap-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
-    } catch (err) {
-      console.error('Failed to export image', err);
-      alert('Failed to export image');
+
+      // On mobile, use Web Share API if available
+      if (isMobile && navigator.share) {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], `chrono-snap-${Date.now()}.png`, { type: 'image/png' });
+        await navigator.share({
+          title: 'ChronoSnap',
+          files: [file],
+        });
+      } else {
+        // Desktop: download directly
+        const link = document.createElement('a');
+        link.download = `chrono-snap-${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
+      }
+    } catch (err: any) {
+      // User cancelled share is not an error
+      if (err?.name !== 'AbortError') {
+        console.error('Failed to export image', err);
+        alert('Failed to export image');
+      }
     } finally {
       setIsExporting(false);
       if (onAfterExport) onAfterExport();
@@ -280,9 +298,9 @@ export const CameraOverlay: React.FC<CameraOverlayProps> = ({ children, onBefore
             <button 
               onClick={handleExportClick}
               className="p-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
-              title="Export Image"
+              title={isMobile ? 'Share Image' : 'Export Image'}
             >
-              <Download size={18} strokeWidth={2.5} />
+              {isMobile ? <Share2 size={18} strokeWidth={2.5} /> : <Download size={18} strokeWidth={2.5} />}
             </button>
             
             {actionButtons && (
